@@ -10,7 +10,7 @@ try {
 
 // Base API URLs
 const VOICES_API_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-const SYNTHESIS_API_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
+const SYNTHESIS_API_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud';
 
 // Helper function to create Edge TTS compatible headers
 function getEdgeHeaders(isVoiceList = true) {
