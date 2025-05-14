@@ -8,11 +8,17 @@ try {
     console.error('Failed to import scripts:', e);
 }
 
-// Base API URLs
+// URL для голосів виконується через звичайний HTTP запит (для списку)
 const VOICES_API_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-const SYNTHESIS_API_URL = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
 
-// Listen for messages from the main thread
+// Глобальні змінні для обробки аудіо
+let audioChunks = [];
+let combinedAudioData = new Uint8Array(0);
+let webSocket = null;
+let voiceInfo = null;
+let endMessageReceived = false;
+
+// Слухаємо повідомлення з головного потоку
 self.addEventListener('message', async (event) => {
     const { type, data } = event.data;
     
@@ -22,7 +28,8 @@ self.addEventListener('message', async (event) => {
                 await fetchVoices();
                 break;
             case 'generate-audio':
-                await generateAudio(data);
+                voiceInfo = data.voice;
+                await generateAudio(data.ssml);
                 break;
             default:
                 self.postMessage({ type: 'error', error: 'Unknown command' });
@@ -32,7 +39,7 @@ self.addEventListener('message', async (event) => {
     }
 });
 
-// Generate a unique connection ID
+// Отримати унікальний ID з'єднання
 function generateConnectionId() {
     const uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
         const r = (Math.random() * 16) | 0;
@@ -42,195 +49,33 @@ function generateConnectionId() {
     return uuid.replace(/-/g, '');
 }
 
-// Get current timestamp in Edge TTS format
-function getTimestamp() {
-    return new Date().toISOString();
+// Отримати поточну дату у форматі веб-сокету Edge TTS
+function getFormattedDate() {
+    const date = new Date();
+    const options = {
+        weekday: 'short',
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short',
+    };
+    const dateString = date.toLocaleString('en-US', options);
+    return dateString.replace(/\u200E/g, '') + ' GMT+0000 (Coordinated Universal Time)';
 }
 
-// Fetch available voices using standard fetch
-async function fetchVoices() {
-    try {
-        self.postMessage({ type: 'info', message: 'Fetching voices...' });
-        
-        // Use standard fetch - we can't set custom headers but don't need them for this endpoint
-        const response = await fetch(VOICES_API_URL);
-        
-        if (!response.ok) {
-            throw new Error(`Error fetching voices: ${response.status} ${response.statusText}`);
-        }
-        
-        // Parse response
-        const voices = await response.json();
-        
-        // Send the voices list back to the main thread
-        self.postMessage({ type: 'voices-list', voices });
-    } catch (error) {
-        self.postMessage({ type: 'error', error: `Failed to fetch voices: ${error.message}` });
-    }
+// Створити заголовки та SSML для запиту
+function createSsmlHeaders(requestId, timestamp, ssml) {
+    return "X-RequestId:" + requestId + "\r\n" +
+        "Content-Type:application/ssml+xml\r\n" +
+        "X-Timestamp:" + timestamp + "Z\r\n" +
+        "Path:ssml\r\n\r\n" +
+        ssml;
 }
 
-// Generate audio from SSML using WebSocket
-async function generateAudio(data) {
-    try {
-        const { ssml, voice } = data;
-        
-        // Send start message
-        self.postMessage({ type: 'generation-start' });
-        
-        // Generate a connection ID
-        const connectionId = generateConnectionId();
-        
-        // Create WebSocket connection
-        const socketUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=${connectionId}`;
-        const socket = new WebSocket(socketUrl);
-        
-        // Audio data chunks
-        const audioChunks = [];
-        const dataHeaderSeparator = new TextEncoder().encode("Path:audio\r\n");
-        
-        // Create a promise for the WebSocket operation
-        const audioPromise = new Promise((resolve, reject) => {
-            let isAudioReceived = false;
-            let connectionTimer = setTimeout(() => {
-                if (!isAudioReceived && socket.readyState === WebSocket.OPEN) {
-                    socket.close();
-                    reject(new Error("Timeout waiting for audio data"));
-                }
-            }, 15000); // 15 second timeout
-            
-            socket.onopen = function() {
-                // Send speech config
-                const timestamp = getTimestamp();
-                const configMessage = 
-                    "X-Timestamp:" + timestamp + "\r\n" +
-                    "Content-Type:application/json; charset=utf-8\r\n" +
-                    "Path:speech.config\r\n\r\n" +
-                    '{"context":{"synthesis":{"audio":{"metadataoptions":{' +
-                    '"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":true},' +
-                    '"outputFormat":"audio-16khz-128kbitrate-mono-mp3"' +
-                    "}}}}\r\n";
-                    
-                socket.send(configMessage);
-                
-                // Send SSML with a small delay to ensure proper sequencing
-                setTimeout(() => {
-                    const ssmlMessage = 
-                        "X-RequestId:" + connectionId + "\r\n" +
-                        "Content-Type:application/ssml+xml\r\n" +
-                        "X-Timestamp:" + timestamp + "\r\n" +
-                        "Path:ssml\r\n\r\n" +
-                        ssml;
-                    
-                    socket.send(ssmlMessage);
-                }, 100);
-                
-                self.postMessage({ type: 'info', message: 'WebSocket opened, sending request...' });
-            };
-            
-            socket.onmessage = async function(event) {
-                const data = event.data;
-                
-                if (typeof data === 'string') {
-                    self.postMessage({ type: 'info', message: `Received message: ${data.substring(0, 50)}...` });
-                    
-                    if (data.includes("Path:turn.end")) {
-                        // End of audio message received
-                        clearTimeout(connectionTimer);
-                        
-                        if (audioChunks.length > 0) {
-                            // Process collected audio chunks
-                            await processAudioChunks();
-                        } else if (!isAudioReceived) {
-                            reject(new Error("No audio data received before turn.end"));
-                        }
-                    }
-                } else if (data instanceof Blob) {
-                    // Binary data - audio chunk
-                    isAudioReceived = true;
-                    audioChunks.push(data);
-                    self.postMessage({ type: 'info', message: `Received binary chunk: ${data.size} bytes` });
-                }
-            };
-            
-            socket.onerror = function(error) {
-                clearTimeout(connectionTimer);
-                self.postMessage({ type: 'info', message: 'WebSocket error occurred' });
-                reject(new Error(`WebSocket error: ${error.message || 'Unknown error'}`));
-            };
-            
-            socket.onclose = function(event) {
-                clearTimeout(connectionTimer);
-                self.postMessage({ type: 'info', message: `WebSocket closed with code: ${event.code}, reason: ${event.reason}` });
-                
-                if (!isAudioReceived) {
-                    reject(new Error("Connection closed without receiving audio data"));
-                } else if (audioChunks.length > 0) {
-                    // Process collected audio chunks if not already done
-                    processAudioChunks().catch(reject);
-                }
-            };
-            
-            // Function to process audio chunks when complete
-            async function processAudioChunks() {
-                try {
-                    // Process all audio blobs
-                    let combinedAudioData = new Uint8Array(0);
-                    
-                    for (const blob of audioChunks) {
-                        // Convert blob to arraybuffer
-                        const arrayBuffer = await blob.arrayBuffer();
-                        const chunk = new Uint8Array(arrayBuffer);
-                        
-                        // Find the audio data by searching for the separator
-                        const separatorIndex = findSeparatorIndex(chunk, dataHeaderSeparator);
-                        
-                        if (separatorIndex !== -1) {
-                            // Get only the audio part after the separator
-                            const audioData = chunk.slice(separatorIndex + dataHeaderSeparator.length);
-                            
-                            // Combine with previous chunks
-                            const newCombined = new Uint8Array(combinedAudioData.length + audioData.length);
-                            newCombined.set(combinedAudioData, 0);
-                            newCombined.set(audioData, combinedAudioData.length);
-                            combinedAudioData = newCombined;
-                        } else {
-                            // If no separator found, just append the whole chunk
-                            const newCombined = new Uint8Array(combinedAudioData.length + chunk.length);
-                            newCombined.set(combinedAudioData, 0);
-                            newCombined.set(chunk, combinedAudioData.length);
-                            combinedAudioData = newCombined;
-                        }
-                    }
-                    
-                    if (combinedAudioData.length > 0) {
-                        // Resolve with the combined audio data
-                        socket.close();
-                        resolve(combinedAudioData.buffer);
-                    } else {
-                        reject(new Error("No valid audio data found in the response"));
-                    }
-                } catch (error) {
-                    reject(new Error(`Error processing audio chunks: ${error.message}`));
-                }
-            }
-        });
-        
-        // Wait for the promise to resolve with the audio data
-        const audioData = await audioPromise;
-        
-        // Send audio data back to main thread
-        self.postMessage({
-            type: 'audio-generated',
-            audio: audioData,
-            voiceInfo: voice
-        }, [audioData]);
-        
-    } catch (error) {
-        self.postMessage({ type: 'error', error: `Failed to generate audio: ${error.message}` });
-    }
-}
-
-// Helper function to find the index of a separator in a Uint8Array
+// Знайти індекс роздільника в масиві байтів
 function findSeparatorIndex(array, separator) {
     for (let i = 0; i < array.length - separator.length + 1; i++) {
         let found = true;
@@ -245,4 +90,178 @@ function findSeparatorIndex(array, separator) {
         }
     }
     return -1;
+}
+
+// Отримати список голосів
+async function fetchVoices() {
+    try {
+        self.postMessage({ type: 'info', message: 'Fetching voices...' });
+        
+        const response = await fetch(VOICES_API_URL);
+        
+        if (!response.ok) {
+            throw new Error(`Error fetching voices: ${response.status} ${response.statusText}`);
+        }
+        
+        const voices = await response.json();
+        
+        self.postMessage({ type: 'voices-list', voices });
+    } catch (error) {
+        self.postMessage({ type: 'error', error: `Failed to fetch voices: ${error.message}` });
+    }
+}
+
+// Створити аудіо з SSML через WebSocket
+async function generateAudio(ssml) {
+    // Очистити попередні дані
+    audioChunks = [];
+    combinedAudioData = new Uint8Array(0);
+    endMessageReceived = false;
+    
+    try {
+        // Надіслати повідомлення про початок генерації
+        self.postMessage({ type: 'generation-start' });
+        
+        // Створити WebSocket з'єднання
+        const connectionId = generateConnectionId();
+        const socketUrl = `wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4&ConnectionId=${connectionId}`;
+        
+        webSocket = new WebSocket(socketUrl);
+
+        // Налаштувати обробники подій
+        webSocket.addEventListener('open', onSocketOpen.bind(null, ssml));
+        webSocket.addEventListener('message', onSocketMessage);
+        webSocket.addEventListener('error', onSocketError);
+        webSocket.addEventListener('close', onSocketClose);
+    } catch (error) {
+        self.postMessage({ type: 'error', error: `Failed to initialize WebSocket: ${error.message}` });
+    }
+}
+
+// Обробка відкриття WebSocket з'єднання
+function onSocketOpen(ssml, event) {
+    try {
+        // Отримати поточну дату
+        const timestamp = getFormattedDate();
+        
+        // Надіслати конфігурацію
+        webSocket.send(
+            "X-Timestamp:" + timestamp + "\r\n" +
+            "Content-Type:application/json; charset=utf-8\r\n" +
+            "Path:speech.config\r\n\r\n" +
+            '{"context":{"synthesis":{"audio":{"metadataoptions":{' +
+            '"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":true},' +
+            '"outputFormat":"audio-24khz-96kbitrate-mono-mp3"' +
+            "}}}}\r\n"
+        );
+        
+        // Надіслати SSML з заголовками
+        webSocket.send(
+            createSsmlHeaders(
+                generateConnectionId(),
+                timestamp,
+                ssml
+            )
+        );
+    } catch (error) {
+        self.postMessage({ type: 'error', error: `Error in onSocketOpen: ${error.message}` });
+        if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+            webSocket.close();
+        }
+    }
+}
+
+// Обробка повідомлень WebSocket
+async function onSocketMessage(event) {
+    try {
+        const data = event.data;
+        
+        if (typeof data === 'string') {
+            if (data.includes("Path:turn.end")) {
+                endMessageReceived = true;
+                
+                // Обробити накопичені аудіо-чанки
+                await processAudioChunks();
+            }
+        } else if (data instanceof Blob) {
+            // Додати бінарні дані до списку чанків
+            audioChunks.push(data);
+        }
+    } catch (error) {
+        self.postMessage({ type: 'error', error: `Error in onSocketMessage: ${error.message}` });
+    }
+}
+
+// Обробка помилок WebSocket
+function onSocketError(error) {
+    self.postMessage({ type: 'error', error: `WebSocket error: ${error.message || 'Unknown error'}` });
+}
+
+// Обробка закриття WebSocket
+function onSocketClose(event) {
+    // Якщо отримали повідомлення про завершення, але ще не зберегли аудіо
+    if (endMessageReceived && audioChunks.length > 0) {
+        processAudioChunks().catch(error => {
+            self.postMessage({ type: 'error', error: `Error processing audio after close: ${error.message}` });
+        });
+    } else if (!endMessageReceived && audioChunks.length === 0) {
+        // Нічого не отримали - повторити спробу через 2 секунди
+        setTimeout(() => {
+            self.postMessage({ type: 'error', error: `Connection closed without receiving audio data` });
+        }, 500);
+    }
+}
+
+// Обробка аудіо-чанків та створення MP3
+async function processAudioChunks() {
+    if (audioChunks.length === 0) return;
+    
+    try {
+        const dataSeparator = new TextEncoder().encode("Path:audio\r\n");
+        
+        // Обробка всіх блобів
+        for (let i = 0; i < audioChunks.length; i++) {
+            const blob = audioChunks[i];
+            const arrayBuffer = await blob.arrayBuffer();
+            const chunk = new Uint8Array(arrayBuffer);
+            
+            // Знайти роздільник аудіо-даних
+            const separatorIndex = findSeparatorIndex(chunk, dataSeparator);
+            
+            if (separatorIndex !== -1) {
+                // Отримати тільки частину після роздільника
+                const audioData = chunk.slice(separatorIndex + dataSeparator.length);
+                
+                // Об'єднати з попередніми даними
+                const newCombined = new Uint8Array(combinedAudioData.length + audioData.length);
+                newCombined.set(combinedAudioData, 0);
+                newCombined.set(audioData, combinedAudioData.length);
+                combinedAudioData = newCombined;
+            }
+        }
+        
+        // Перевірити, чи маємо дані для збереження
+        if (combinedAudioData.length > 0) {
+            // Закрити з'єднання, якщо воно ще відкрите
+            if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+                webSocket.close();
+            }
+            
+            // Надіслати аудіо до головного потоку
+            self.postMessage({
+                type: 'audio-generated',
+                audio: combinedAudioData.buffer,
+                voiceInfo: voiceInfo
+            }, [combinedAudioData.buffer]);
+            
+            // Очистити для наступного використання
+            audioChunks = [];
+            combinedAudioData = new Uint8Array(0);
+            endMessageReceived = false;
+        } else {
+            throw new Error("No valid audio data found after processing chunks");
+        }
+    } catch (error) {
+        self.postMessage({ type: 'error', error: `Error processing audio chunks: ${error.message}` });
+    }
 } 
