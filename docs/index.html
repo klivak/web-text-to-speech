@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="uk" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#4361EE">
+    <title>TTS Generator</title>
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔊</text></svg>">
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="./css/styles.css">
+</head>
+<body>
+    <!-- Top page loader for audio generation -->
+    <div id="topPageLoader" class="top-page-loader d-none">
+        <div class="progress" style="height: 4px; border-radius: 0;">
+            <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+        </div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#">TTS Generator</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="themeDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-palette"></i> Тема
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="themeDropdown">
+                            <li><a class="dropdown-item" href="#" id="themeLight"><i class="bi bi-sun"></i> Світла</a></li>
+                            <li><a class="dropdown-item" href="#" id="themeDark"><i class="bi bi-moon"></i> Темна</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="themeSystem"><i class="bi bi-laptop"></i> Системна</a></li>
+                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="helpBtn">Інструкція</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#" id="aboutBtn">Про програму</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row">
+            <div class="col-lg-12 mb-4">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5>🔍 Фільтр голосів</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="languageSelect" class="form-label">Мова:</label>
+                                <select class="form-select" id="languageSelect">
+                                    <option value="all">Завантаження...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="accentSelect" class="form-label">Акцент:</label>
+                                <select class="form-select" id="accentSelect">
+                                    <option value="all">Завантаження...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="genderSelect" class="form-label">Стать:</label>
+                                <select class="form-select" id="genderSelect">
+                                    <option value="all">Всі</option>
+                                    <option value="Male">Чоловіча</option>
+                                    <option value="Female">Жіноча</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button id="resetFiltersBtn" class="btn btn-outline-secondary btn-sm me-2">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                            <button id="applyFiltersBtn" class="btn btn-primary">
+                                <i class="bi bi-funnel"></i> Застосувати фільтри
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-light">
+                        <h5>🎤 Доступні голоси <span id="voicesCount" class="badge bg-secondary">0</span></h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush voice-list" id="voicesList">
+                            <div class="list-group-item text-center py-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Завантаження...</span>
+                                </div>
+                                <p class="mt-2">Завантаження голосів...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8 mb-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5>📝 Текст для озвучення</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div id="charCount" class="text-muted small">
+                                Символів: 0 | Приблизний час озвучення тексту: 0 сек
+                            </div>
+                            <div class="quote-btn-container">
+                                <button id="randomQuoteBtn" class="btn btn-sm btn-outline-secondary" title="Вставити випадкову цитату">
+                                    <i class="bi bi-quote"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <textarea class="form-control mb-3" id="textInput" rows="5" placeholder="Введіть текст для озвучення..."></textarea>
+                        <div class="d-flex justify-content-between">
+                            <button id="pasteBtn" class="btn btn-outline-secondary">
+                                <i class="bi bi-clipboard"></i> Вставити з буфера
+                            </button>
+                            <button id="clearBtn" class="btn btn-outline-danger">
+                                <i class="bi bi-trash"></i> Очистити текст
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5>⚙️ Параметри голосу</h5>
+                            <button id="resetVoiceParamsBtn" class="btn btn-sm btn-outline-secondary">
+                                <i class="bi bi-arrow-repeat"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="rateInput" class="form-label">Швидкість:</label>
+                                <div class="input-group">
+                                    <button class="btn btn-outline-secondary" type="button" id="decrementRate">
+                                        <i class="bi bi-dash-lg"></i>
+                                    </button>
+                                    <input type="text" class="form-control" id="rateInput" value="+0%">
+                                    <button class="btn btn-outline-secondary" type="button" id="incrementRate">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                    <span class="input-group-text"><i class="bi bi-speedometer"></i></span>
+                                </div>
+                                <div class="form-text">Приклад: +10%, -20%</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="volumeInput" class="form-label">Гучність:</label>
+                                <div class="input-group">
+                                    <button class="btn btn-outline-secondary" type="button" id="decrementVolume">
+                                        <i class="bi bi-dash-lg"></i>
+                                    </button>
+                                    <input type="text" class="form-control" id="volumeInput" value="+0%">
+                                    <button class="btn btn-outline-secondary" type="button" id="incrementVolume">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                    <span class="input-group-text"><i class="bi bi-volume-up"></i></span>
+                                </div>
+                                <div class="form-text">Приклад: +10%, -5%</div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="pitchInput" class="form-label">Висота:</label>
+                                <div class="input-group">
+                                    <button class="btn btn-outline-secondary" type="button" id="decrementPitch">
+                                        <i class="bi bi-dash-lg"></i>
+                                    </button>
+                                    <input type="text" class="form-control" id="pitchInput" value="+0Hz">
+                                    <button class="btn btn-outline-secondary" type="button" id="incrementPitch">
+                                        <i class="bi bi-plus-lg"></i>
+                                    </button>
+                                    <span class="input-group-text"><i class="bi bi-music-note"></i></span>
+                                </div>
+                                <div class="form-text">Приклад: +10Hz, -20Hz</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5>🔊 Генерація та відтворення</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="generationProgress" class="mb-3 d-none">
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                            </div>
+                            <p class="text-center mt-2 mb-0"><small>Генерація аудіо, зачекайте...</small></p>
+                        </div>
+                        
+                        <div class="d-grid mb-3">
+                            <button id="generateBtn" class="btn btn-success btn-lg">
+                                <i class="bi bi-soundwave"></i> Згенерувати аудіо
+                            </button>
+                        </div>
+                        
+                        <div id="playerContainer" class="d-none">
+                            <div class="card bg-light mb-3">
+                                <div class="card-body">
+                                    <p class="mb-2"><i class="bi bi-file-earmark-music"></i> <span id="currentAudio">file.mp3</span></p>
+                                    
+                                    <div class="d-flex align-items-center mb-2">
+                                        <span id="currentTime" class="me-2">0:00</span>
+                                        <input type="range" class="form-range flex-grow-1 mx-2" id="audioSeek" min="0" max="100" value="0">
+                                        <span id="duration" class="ms-2">0:00</span>
+                                    </div>
+                                    
+                                    <div class="progress mb-3" style="height: 5px;">
+                                        <div class="progress-bar" id="audioProgress" role="progressbar" style="width: 0%"></div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <button id="rewind10Btn" class="btn btn-outline-secondary" title="Перемотати назад на 10 секунд">
+                                            <i class="bi bi-rewind"></i> 10s
+                                        </button>
+                                        <button id="playBtn" class="btn btn-primary" disabled>
+                                            <i class="bi bi-play-fill"></i> Відтворити
+                                        </button>
+                                        <button id="stopBtn" class="btn btn-outline-secondary" disabled>
+                                            <i class="bi bi-stop-fill"></i> Стоп
+                                        </button>
+                                        <button id="forward10Btn" class="btn btn-outline-secondary" title="Перемотати вперед на 10 секунд">
+                                            <i class="bi bi-fast-forward"></i> 10s
+                                        </button>
+                                        <div class="dropdown">
+                                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="playbackSpeed" data-bs-toggle="dropdown" aria-expanded="false">
+                                                1.0x
+                                            </button>
+                                            <ul class="dropdown-menu" aria-labelledby="playbackSpeed">
+                                                <li><a class="dropdown-item" href="#" data-speed="0.5">0.5x</a></li>
+                                                <li><a class="dropdown-item" href="#" data-speed="0.75">0.75x</a></li>
+                                                <li><a class="dropdown-item" href="#" data-speed="1.0">1.0x</a></li>
+                                                <li><a class="dropdown-item" href="#" data-speed="1.25">1.25x</a></li>
+                                                <li><a class="dropdown-item" href="#" data-speed="1.5">1.5x</a></li>
+                                                <li><a class="dropdown-item" href="#" data-speed="2.0">2.0x</a></li>
+                                            </ul>
+                                        </div>
+                                        <a id="downloadAudioBtn" class="btn btn-outline-success" href="#" download>
+                                            <i class="bi bi-download"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+                
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5>📚 Історія згенерованих аудіо</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>Назва файлу</th>
+                                        <th>Розмір</th>
+                                        <th>Дата</th>
+                                        <th>Дії</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audioHistory">
+                                    <tr>
+                                        <td colspan="4" class="text-center py-3">
+                                            <p>Немає згенерованих аудіофайлів</p>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-secondary" role="alert" id="statusLog">
+                    Готовий до роботи
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Сповіщення -->
+    <div id="toastContainer" class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+    
+    <!-- Модальне вікно з інструкціями -->
+    <div class="modal fade" id="instructionsModal" tabindex="-1" aria-labelledby="instructionsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="instructionsModalLabel">Інструкція користувача</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h5>Як користуватися програмою:</h5>
+                    <ol>
+                        <li>Виберіть <strong>мову</strong>, <strong>акцент</strong> і <strong>стать</strong> голосу зі списків вгорі</li>
+                        <li>Натисніть <strong>Застосувати фільтри</strong>, щоб отримати список доступних голосів</li>
+                        <li>Виберіть голос зі списку ліворуч</li>
+                        <li>Введіть або вставте текст у поле для озвучення</li>
+                        <li>За бажанням налаштуйте параметри голосу (швидкість, гучність, висоту)</li>
+                        <li>Натисніть <strong>Згенерувати аудіо</strong></li>
+                        <li>Після генерації використовуйте плеєр для відтворення або завантажте аудіофайл кнопкою справа</li>
+                    </ol>
+                    
+                    <h5>Параметри голосу:</h5>
+                    <ul>
+                        <li><strong>Швидкість</strong> - змініть швидкість мовлення (приклад: +10%, -5%)</li>
+                        <li><strong>Гучність</strong> - змініть гучність голосу (приклад: +10%, -5%)</li>
+                        <li><strong>Висота</strong> - змініть висоту голосу (приклад: +10Hz, -10Hz)</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальне вікно "Про програму" -->
+    <div class="modal fade" id="aboutModal" tabindex="-1" aria-labelledby="aboutModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="aboutModalLabel">Про програму</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <h5>TTS Generator</h5>
+                    <p>
+                        Веб-додаток для генерації озвучення тексту з використанням Edge TTS API.
+                        <br><br>
+                        Підтримує понад 400 голосів різними мовами з різними налаштуваннями.
+                    </p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="./js/theme.js"></script>
+    <script src="./js/app.js"></script>
+</body>
+</html> 
