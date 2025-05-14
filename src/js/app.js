@@ -238,6 +238,12 @@ function loadLanguages() {
             return locale.split('-')[0];
         }))].filter(lang => lang).sort();
         
+        // Оновлюємо лейбл з кількістю доступних мов
+        const languageLabel = document.querySelector('label[for="languageSelect"]');
+        if (languageLabel) {
+            languageLabel.textContent = `Мова: (${languages.length})`;
+        }
+        
         // Clear the language select
         elements.languageSelect.innerHTML = '';
         
@@ -284,6 +290,9 @@ function loadAccents(language) {
         allOption.textContent = 'Всі акценти';
         elements.accentSelect.appendChild(allOption);
         
+        // Оновлюємо лейбл акцентів
+        const accentLabel = document.querySelector('label[for="accentSelect"]');
+        
         if (language !== 'all') {
             // Get unique accents for this language
             const accents = [...new Set(allVoices
@@ -294,6 +303,11 @@ function loadAccents(language) {
                 })
             )].filter(accent => accent).sort();
             
+            // Оновлюємо лейбл з кількістю доступних акцентів
+            if (accentLabel) {
+                accentLabel.textContent = `Акцент: (${accents.length})`;
+            }
+            
             // Add accent options
             accents.forEach(accent => {
                 const option = document.createElement('option');
@@ -303,13 +317,30 @@ function loadAccents(language) {
                 elements.accentSelect.appendChild(option);
             });
             
-            // Default to US for English
-            if (language === 'en') {
+            // Якщо доступний лише один акцент, автоматично вибираємо його
+            if (accents.length === 1) {
+                elements.accentSelect.value = accents[0];
+            } 
+            // Інакше, для англійської, вибираємо US як стандартний акцент
+            else if (language === 'en') {
                 const usOption = Array.from(elements.accentSelect.options)
                     .find(opt => opt.value === 'US');
                 if (usOption) {
                     elements.accentSelect.value = 'US';
                 }
+            }
+        } else {
+            // Коли вибрані всі мови, показуємо загальну кількість акцентів
+            const allAccents = [...new Set(allVoices
+                .map(voice => {
+                    const locale = voice.Locale || '';
+                    const parts = locale.split('-');
+                    return parts.length > 1 ? parts[1] : null;
+                })
+            )].filter(accent => accent).length;
+            
+            if (accentLabel) {
+                accentLabel.textContent = `Акцент: (${allAccents})`;
             }
         }
         
@@ -382,14 +413,19 @@ function updateVoicesList() {
                 <div class="list-group-item text-center py-4">
                     <div class="text-muted mb-2"><i class="bi bi-emoji-frown"></i></div>
                     <p>Немає голосів, що відповідають фільтрам</p>
-                    <button class="btn btn-outline-secondary btn-sm mt-2" id="resetFiltersInEmptyList">
+                    <button class="btn btn-outline-secondary btn-sm mt-2" id="resetFiltersInEmptyList" 
+                           data-bs-toggle="tooltip" data-bs-placement="top" title="Скинути всі фільтри">
                         <i class="bi bi-arrow-counterclockwise"></i> Скинути фільтри
                     </button>
                 </div>
             `;
             
             // Add event listener to reset button in empty list
-            document.getElementById('resetFiltersInEmptyList').addEventListener('click', resetFilters);
+            const resetBtn = document.getElementById('resetFiltersInEmptyList');
+            resetBtn.addEventListener('click', resetFilters);
+            
+            // Initialize tooltip for reset button
+            new bootstrap.Tooltip(resetBtn);
             return;
         }
         
@@ -426,10 +462,18 @@ function updateVoicesList() {
             item.className = 'list-group-item voice-item';
             item.dataset.voiceId = voice.ShortName;
             
+            // Визначаємо емоджі в залежності від статі голосу
+            const genderIcon = voice.Gender === 'Male' 
+                ? '<span class="me-2 fs-4">👨‍🦱</span>' 
+                : '<span class="me-2 fs-4">👱‍♀️</span>';
+            
             item.innerHTML = `
-                <div class="d-flex flex-column justify-content-center w-100">
-                    <span class="fw-medium">${displayName}</span>
-                    <small class="text-muted">${displayDetails}</small>
+                <div class="d-flex align-items-center w-100">
+                    ${genderIcon}
+                    <div class="d-flex flex-column justify-content-center">
+                        <span class="fw-medium">${displayName}</span>
+                        <small class="text-muted">${displayDetails}</small>
+                    </div>
                 </div>
             `;
             
@@ -499,10 +543,18 @@ function setupEventListeners() {
     });
     
     // Apply filters button
+    elements.applyFiltersBtn.setAttribute('data-bs-toggle', 'tooltip');
+    elements.applyFiltersBtn.setAttribute('data-bs-placement', 'top');
+    elements.applyFiltersBtn.setAttribute('title', 'Застосувати вибрані фільтри');
     elements.applyFiltersBtn.addEventListener('click', filterVoices);
+    new bootstrap.Tooltip(elements.applyFiltersBtn);
     
-    // Reset filters button
+    // Reset filters button - додаємо тултіп
+    elements.resetFiltersBtn.setAttribute('data-bs-toggle', 'tooltip');
+    elements.resetFiltersBtn.setAttribute('data-bs-placement', 'top');
+    elements.resetFiltersBtn.setAttribute('title', 'Скинути всі фільтри');
     elements.resetFiltersBtn.addEventListener('click', resetFilters);
+    new bootstrap.Tooltip(elements.resetFiltersBtn);
     
     // Text input
     elements.textInput.addEventListener('input', updateCharCount);
