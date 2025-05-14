@@ -12,6 +12,12 @@ body {
     z-index: 1100;
 }
 
+/* Custom progress bar colors - зелено-жовтий більш помітний колір */
+.progress-bar-striped.progress-bar-animated {
+    background-color: #e6a919 !important; /* Яскравий жовто-оранжевий колір */
+    background-image: linear-gradient(45deg, rgba(255, 255, 255, 0.15) 25%, transparent 25%, transparent 50%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.15) 75%, transparent 75%, transparent) !important;
+}
+
 /* Voice list */
 .voice-list {
     max-height: 500px;
