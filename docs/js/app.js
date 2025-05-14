@@ -1,12 +1,49 @@
 /**
  * TTS Generator - Edge TTS Web Client
  * JavaScript implementation for Edge TTS API
+ * Version: 1.0.1 (forced update)
  */
 
 // Constants
 const AVG_CHARS_PER_SECOND = 15; // Average characters per second for TTS estimation
 const EDGE_TTS_API_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4'; // Direct API endpoint
 const EDGE_TTS_SYNTHESIS_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud'; // Direct API endpoint
+
+// Create Web Worker for API requests (to bypass CORS)
+let ttsWorker = null;
+try {
+    ttsWorker = new Worker('./js/worker.js');
+    
+    // Set up worker message handling
+    ttsWorker.onmessage = function(event) {
+        const { type, voices, audio, error, voiceInfo } = event.data;
+        
+        switch (type) {
+            case 'voices-list':
+                handleVoicesLoaded(voices);
+                break;
+            case 'audio-generated':
+                handleAudioGenerated(audio, voiceInfo);
+                break;
+            case 'generation-start':
+                showGenerationProgress(true);
+                break;
+            case 'error':
+                console.error('Worker error:', error);
+                updateStatus(`Помилка: ${error}`, 'danger', true);
+                showGenerationProgress(false);
+                break;
+        }
+    };
+    
+    ttsWorker.onerror = function(error) {
+        console.error('Worker error:', error);
+        updateStatus('Помилка ініціалізації TTS Worker', 'danger', true);
+    };
+} catch (error) {
+    console.error('Failed to create Web Worker:', error);
+    updateStatus('Помилка ініціалізації TTS Worker. Сучасний браузер потрібен.', 'danger', true);
+}
 
 // Language and accent data
 const LANGUAGE_NAMES = {
@@ -176,17 +213,22 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.instructionsModal = new bootstrap.Modal(document.getElementById('instructionsModal'));
     elements.aboutModal = new bootstrap.Modal(document.getElementById('aboutModal'));
     
+    // Set up event listeners
+    setupEventListeners();
+    initializeAudioPlayer();
+    updateCharCount();
+    
     // Load initial data
-    fetchVoices().then(() => {
-        loadLanguages();
-        setupEventListeners();
-        initializeAudioPlayer();
-        updateCharCount();
-        updateStatus('Готовий до роботи');
-    }).catch(error => {
-        console.error('Error initializing app:', error);
-        updateStatus('Помилка завантаження голосів. Перезавантажте сторінку.', 'danger', true);
-    });
+    if (ttsWorker) {
+        fetchVoices().then(() => {
+            updateStatus('Готовий до роботи');
+        }).catch(error => {
+            console.error('Error initializing app:', error);
+            updateStatus('Помилка завантаження голосів. Перезавантажте сторінку.', 'danger', true);
+        });
+    } else {
+        updateStatus('Цей браузер не підтримує Web Workers. Спробуйте інший браузер.', 'danger', true);
+    }
 });
 
 /**
@@ -196,29 +238,16 @@ async function fetchVoices() {
     try {
         updateStatus('Завантаження голосів...', 'info');
         
-        const response = await fetch(EDGE_TTS_API_URL, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/json',
-                'Origin': 'https://klivak.github.io',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.51',
-                'Referer': 'https://klivak.github.io/web-text-to-speech/'
-            }
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! Status: ${response.status}`);
+        // Check if worker is available
+        if (!ttsWorker) {
+            throw new Error('TTS Worker not available');
         }
         
-        allVoices = await response.json();
-        console.log(`Loaded ${allVoices.length} voices from Edge TTS API`);
+        // Request voices list from worker
+        ttsWorker.postMessage({ type: 'fetch-voices' });
         
-        // Filter voices to show by default
-        filteredVoices = allVoices;
-        
-        // Update status
-        updateStatus(`Завантажено ${allVoices.length} голосів`, 'success');
-        return allVoices;
+        // The actual processing is done in the worker message handler
+        return true;
     } catch (error) {
         console.error('Error fetching voices:', error);
         updateStatus('Помилка завантаження голосів', 'danger', true);
@@ -232,6 +261,26 @@ async function fetchVoices() {
             </div>
         `;
         throw error;
+    }
+}
+
+/**
+ * Handle loaded voices from worker
+ */
+function handleVoicesLoaded(voices) {
+    try {
+        allVoices = voices;
+        console.log(`Loaded ${allVoices.length} voices from Edge TTS API`);
+        
+        // Filter voices to show by default
+        filteredVoices = allVoices;
+        
+        // Update UI
+        loadLanguages();
+        updateStatus(`Завантажено ${allVoices.length} голосів`, 'success');
+    } catch (error) {
+        console.error('Error processing voices:', error);
+        updateStatus('Помилка обробки голосів', 'danger', true);
     }
 }
 
@@ -616,9 +665,7 @@ async function generateAudio() {
         const pitch = elements.pitchInput.value;
         
         // Show progress indicators
-        elements.generationProgress.classList.remove('d-none');
-        elements.topPageLoader.classList.remove('d-none');
-        elements.generateBtn.disabled = true;
+        showGenerationProgress(true);
         updateStatus(`Генерація аудіо з голосом ${selectedVoice.ShortName}...`, 'info');
         
         // Make sure the text doesn't contain the error message itself
@@ -636,33 +683,55 @@ async function generateAudio() {
         console.log('Generating audio with SSML:', ssml);
         
         // Start time for measuring generation time
-        const startTime = performance.now();
+        window.generationStartTime = performance.now();
         
-        // Make request to Edge TTS API
-        const response = await fetch(EDGE_TTS_SYNTHESIS_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/ssml+xml',
-                'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.51',
-                'Accept': 'audio/mp3',
-                'Origin': 'https://klivak.github.io',
-                'Referer': 'https://klivak.github.io/web-text-to-speech/',
-                'Connection-Id': 'speech-connection-' + Date.now(),
-                'X-Search-ClientId': '7D8FA3AC47D6493D89F29B3FAE4A8ADE'
-            },
-            body: ssml
-        });
-        
-        if (!response.ok) {
-            throw new Error(`Error generating audio: ${response.status} ${response.statusText}`);
+        // Check if worker is available
+        if (!ttsWorker) {
+            throw new Error('TTS Worker not available');
         }
         
-        // Get audio blob from response
-        const audioBlob = await response.blob();
+        // Send request to worker
+        ttsWorker.postMessage({
+            type: 'generate-audio',
+            data: {
+                ssml: ssml,
+                voice: selectedVoice
+            }
+        });
         
+        // The actual processing will continue in the worker message handler
+    } catch (error) {
+        console.error('Error generating audio:', error);
+        showGenerationProgress(false);
+        updateStatus(`Помилка генерації аудіо: ${error.message}`, 'danger', true);
+    }
+}
+
+/**
+ * Show or hide generation progress indicators
+ */
+function showGenerationProgress(show) {
+    if (show) {
+        elements.generationProgress.classList.remove('d-none');
+        elements.topPageLoader.classList.remove('d-none');
+        elements.generateBtn.disabled = true;
+    } else {
+        elements.generationProgress.classList.add('d-none');
+        elements.topPageLoader.classList.add('d-none');
+        elements.generateBtn.disabled = false;
+    }
+}
+
+/**
+ * Handle generated audio from worker
+ */
+function handleAudioGenerated(audioBuffer, voiceInfo) {
+    try {
         // Calculate generation time
-        const generationTime = ((performance.now() - startTime) / 1000).toFixed(2);
+        const generationTime = ((performance.now() - window.generationStartTime) / 1000).toFixed(2);
+        
+        // Create blob from array buffer
+        const audioBlob = new Blob([audioBuffer], { type: 'audio/mp3' });
         
         // Create object URL for the audio blob
         const audioUrl = URL.createObjectURL(audioBlob);
@@ -679,14 +748,14 @@ async function generateAudio() {
             filename: filename,
             voice: selectedVoice.ShortName,
             voiceDisplayName: selectedVoice.Name || selectedVoice.ShortName,
-            text: text.substring(0, 100) + (text.length > 100 ? '...' : ''),
+            text: elements.textInput.value.substring(0, 100) + (elements.textInput.value.length > 100 ? '...' : ''),
             time: new Date().toISOString(),
             size: audioBlob.size,
             generationTime: generationTime,
             parameters: {
-                rate: rate,
-                volume: volume,
-                pitch: pitch
+                rate: elements.rateInput.value,
+                volume: elements.volumeInput.value,
+                pitch: elements.pitchInput.value
             }
         };
         
@@ -702,9 +771,7 @@ async function generateAudio() {
         }
         
         // Update UI
-        elements.generationProgress.classList.add('d-none');
-        elements.topPageLoader.classList.add('d-none');
-        elements.generateBtn.disabled = false;
+        showGenerationProgress(false);
         
         // Update download button
         elements.downloadAudioBtn.href = audioUrl;
@@ -723,13 +790,10 @@ async function generateAudio() {
         // Show success message
         updateStatus(`Аудіо згенеровано (${generationTime} сек). Натисніть "Відтворити" для прослуховування.`, 'success', true);
         
-        return audioData;
     } catch (error) {
-        console.error('Error generating audio:', error);
-        elements.generationProgress.classList.add('d-none');
-        elements.topPageLoader.classList.add('d-none');
-        elements.generateBtn.disabled = false;
-        updateStatus(`Помилка генерації аудіо: ${error.message}`, 'danger', true);
+        console.error('Error processing generated audio:', error);
+        showGenerationProgress(false);
+        updateStatus(`Помилка обробки згенерованого аудіо: ${error.message}`, 'danger', true);
     }
 }
 
