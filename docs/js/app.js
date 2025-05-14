@@ -5,9 +5,8 @@
 
 // Constants
 const AVG_CHARS_PER_SECOND = 15; // Average characters per second for TTS estimation
-const CORS_PROXY = 'https://jsonp.afeld.me/?url='; // Alternative CORS proxy
-const EDGE_TTS_API_URL = CORS_PROXY + encodeURIComponent('https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4'); // Use CORS proxy for GitHub Pages
-const EDGE_TTS_SYNTHESIS_URL = CORS_PROXY + encodeURIComponent('https://speech.platform.bing.com/consumer/speech/synthesize/readaloud'); // Use CORS proxy for GitHub Pages
+const EDGE_TTS_API_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4'; // Direct API endpoint
+const EDGE_TTS_SYNTHESIS_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud'; // Direct API endpoint
 
 // Language and accent data
 const LANGUAGE_NAMES = {
@@ -197,7 +196,16 @@ async function fetchVoices() {
     try {
         updateStatus('Завантаження голосів...', 'info');
         
-        const response = await fetch(EDGE_TTS_API_URL);
+        const response = await fetch(EDGE_TTS_API_URL, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Origin': 'https://klivak.github.io',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.51',
+                'Referer': 'https://klivak.github.io/web-text-to-speech/'
+            }
+        });
+        
         if (!response.ok) {
             throw new Error(`HTTP error! Status: ${response.status}`);
         }
@@ -638,6 +646,8 @@ async function generateAudio() {
                 'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.51',
                 'Accept': 'audio/mp3',
+                'Origin': 'https://klivak.github.io',
+                'Referer': 'https://klivak.github.io/web-text-to-speech/',
                 'Connection-Id': 'speech-connection-' + Date.now(),
                 'X-Search-ClientId': '7D8FA3AC47D6493D89F29B3FAE4A8ADE'
             },
