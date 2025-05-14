@@ -5,9 +5,9 @@
 
 // Constants
 const AVG_CHARS_PER_SECOND = 15; // Average characters per second for TTS estimation
-const CORS_PROXY = 'https://corsproxy.io/?'; // Empty in development mode, will be replaced in builds
-const EDGE_TTS_API_URL = CORS_PROXY + encodeURIComponent('https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4'); // Use local proxy endpoint
-const EDGE_TTS_SYNTHESIS_URL = CORS_PROXY + encodeURIComponent('https://speech.platform.bing.com/consumer/speech/synthesize/readaloud'); // Use local proxy endpoint
+const CORS_PROXY = 'https://cors-anywhere.herokuapp.com/'; // CORS proxy for GitHub Pages
+const EDGE_TTS_API_URL = CORS_PROXY + 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4'; // Use CORS proxy for GitHub Pages
+const EDGE_TTS_SYNTHESIS_URL = CORS_PROXY + 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud'; // Use CORS proxy for GitHub Pages
 
 // Language and accent data
 const LANGUAGE_NAMES = {
