@@ -17,6 +17,8 @@ let combinedAudioData = new Uint8Array(0);
 let webSocket = null;
 let voiceInfo = null;
 let endMessageReceived = false;
+let isDataProcessed = false;
+let isProcessing = false;
 
 // Слухаємо повідомлення з головного потоку
 self.addEventListener('message', async (event) => {
@@ -117,6 +119,8 @@ async function generateAudio(ssml) {
     audioChunks = [];
     combinedAudioData = new Uint8Array(0);
     endMessageReceived = false;
+    isDataProcessed = false;
+    isProcessing = false;
     
     try {
         // Надіслати повідомлення про початок генерації
@@ -133,6 +137,13 @@ async function generateAudio(ssml) {
         webSocket.addEventListener('message', onSocketMessage);
         webSocket.addEventListener('error', onSocketError);
         webSocket.addEventListener('close', onSocketClose);
+        
+        // Встановлюємо таймаут на з'єднання
+        setTimeout(() => {
+            if (webSocket && webSocket.readyState === WebSocket.OPEN && !endMessageReceived) {
+                webSocket.close();
+            }
+        }, 30000); // 30 секунд часу очікування
     } catch (error) {
         self.postMessage({ type: 'error', error: `Failed to initialize WebSocket: ${error.message}` });
     }
@@ -180,8 +191,8 @@ async function onSocketMessage(event) {
             if (data.includes("Path:turn.end")) {
                 endMessageReceived = true;
                 
-                // Обробити накопичені аудіо-чанки
-                await processAudioChunks();
+                // НЕ обробляємо дані тут, бо можливо ще прийдуть інші повідомлення
+                // Замість цього обробка виконується під час закриття з'єднання
             }
         } else if (data instanceof Blob) {
             // Додати бінарні дані до списку чанків
@@ -199,25 +210,28 @@ function onSocketError(error) {
 
 // Обробка закриття WebSocket
 function onSocketClose(event) {
-    // Якщо отримали повідомлення про завершення, але ще не зберегли аудіо
-    if (endMessageReceived && audioChunks.length > 0) {
+    if (isDataProcessed) {
+        return; // Якщо дані вже були оброблені, не робимо це ще раз
+    }
+    
+    // Обробляємо будь-які доступні дані, навіть якщо не отримали повідомлення про закінчення
+    if (audioChunks.length > 0) {
         processAudioChunks().catch(error => {
             self.postMessage({ type: 'error', error: `Error processing audio after close: ${error.message}` });
         });
-    } else if (!endMessageReceived && audioChunks.length === 0) {
-        // Нічого не отримали - повторити спробу через 2 секунди
-        setTimeout(() => {
-            self.postMessage({ type: 'error', error: `Connection closed without receiving audio data` });
-        }, 500);
+    } else {
+        self.postMessage({ type: 'error', error: `Connection closed without receiving audio data` });
     }
 }
 
 // Обробка аудіо-чанків та створення MP3
 async function processAudioChunks() {
-    if (audioChunks.length === 0) return;
+    if (audioChunks.length === 0 || isProcessing) return;
     
     try {
+        isProcessing = true;
         const dataSeparator = new TextEncoder().encode("Path:audio\r\n");
+        let foundValidAudio = false;
         
         // Обробка всіх блобів
         for (let i = 0; i < audioChunks.length; i++) {
@@ -232,20 +246,34 @@ async function processAudioChunks() {
                 // Отримати тільки частину після роздільника
                 const audioData = chunk.slice(separatorIndex + dataSeparator.length);
                 
-                // Об'єднати з попередніми даними
-                const newCombined = new Uint8Array(combinedAudioData.length + audioData.length);
+                if (audioData.length > 0) {
+                    foundValidAudio = true;
+                    
+                    // Об'єднати з попередніми даними
+                    const newCombined = new Uint8Array(combinedAudioData.length + audioData.length);
+                    newCombined.set(combinedAudioData, 0);
+                    newCombined.set(audioData, combinedAudioData.length);
+                    combinedAudioData = newCombined;
+                }
+            } else if (chunk.length > 0 && i > 0) {
+                // Якщо немає роздільника, але це не перший чанк, припускаємо що це продовження аудіо
+                foundValidAudio = true;
+                const newCombined = new Uint8Array(combinedAudioData.length + chunk.length);
                 newCombined.set(combinedAudioData, 0);
-                newCombined.set(audioData, combinedAudioData.length);
+                newCombined.set(chunk, combinedAudioData.length);
                 combinedAudioData = newCombined;
             }
         }
         
         // Перевірити, чи маємо дані для збереження
-        if (combinedAudioData.length > 0) {
+        if (combinedAudioData.length > 0 && foundValidAudio) {
             // Закрити з'єднання, якщо воно ще відкрите
             if (webSocket && webSocket.readyState === WebSocket.OPEN) {
                 webSocket.close();
             }
+            
+            // Помічаємо що дані були оброблені
+            isDataProcessed = true;
             
             // Надіслати аудіо до головного потоку
             self.postMessage({
@@ -263,5 +291,7 @@ async function processAudioChunks() {
         }
     } catch (error) {
         self.postMessage({ type: 'error', error: `Error processing audio chunks: ${error.message}` });
+    } finally {
+        isProcessing = false;
     }
 } 

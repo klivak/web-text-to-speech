@@ -782,6 +782,7 @@ function handleAudioGenerated(audioBuffer, voiceInfo) {
         
         // Enable playback controls
         elements.playBtn.disabled = false;
+        elements.stopBtn.disabled = true;
         
         // Update the audio history display
         updateAudioHistory();
@@ -891,6 +892,9 @@ function initializeAudioPlayer() {
  */
 function playAudio(url) {
     try {
+        // Запам'ятовуємо URL як останній згенерований для послідовних відтворень
+        lastGeneratedAudio = url;
+        
         // Stop current playback if any
         if (audioPlayer) {
             audioPlayer.pause();
