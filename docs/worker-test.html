@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edge TTS Worker Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4361EE;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:disabled {
+            background-color: #ccc;
+        }
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin: 10px 0;
+            padding: 10px;
+        }
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .info {
+            background-color: #cce5ff;
+            color: #004085;
+        }
+        .hidden {
+            display: none;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Edge TTS Worker Test</h1>
+    
+    <div class="status info" id="status">Worker not initialized yet</div>
+    
+    <div>
+        <button id="fetchVoicesBtn">1. Fetch Voices</button>
+        <button id="generateAudioBtn" disabled>2. Generate Audio</button>
+        <button id="playAudioBtn" disabled>3. Play Audio</button>
+    </div>
+    
+    <h3>Text to Speech</h3>
+    <textarea id="textInput" placeholder="Enter text to convert to speech">This is a test of the Microsoft Edge Text-to-Speech API. If you can hear this message, the web worker is functioning correctly.</textarea>
+    
+    <h3>Voice Information</h3>
+    <pre id="voiceInfo">No voice selected yet</pre>
+    
+    <audio id="audioPlayer" controls class="hidden"></audio>
+    
+    <h3>Log</h3>
+    <pre id="logOutput"></pre>
+
+    <script>
+        // DOM Elements
+        const statusEl = document.getElementById('status');
+        const fetchVoicesBtn = document.getElementById('fetchVoicesBtn');
+        const generateAudioBtn = document.getElementById('generateAudioBtn');
+        const playAudioBtn = document.getElementById('playAudioBtn');
+        const textInput = document.getElementById('textInput');
+        const voiceInfoEl = document.getElementById('voiceInfo');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const logOutput = document.getElementById('logOutput');
+        
+        // Variables
+        let worker = null;
+        let voices = [];
+        let selectedVoice = null;
+        let audioUrl = null;
+        
+        // Initialize worker
+        function initWorker() {
+            try {
+                worker = new Worker('./js/worker.js');
+                
+                worker.onmessage = function(event) {
+                    const { type, voices: voicesList, audio, error, voiceInfo } = event.data;
+                    
+                    log(`Worker message received: ${type}`);
+                    
+                    switch (type) {
+                        case 'voices-list':
+                            handleVoices(voicesList);
+                            break;
+                        case 'audio-generated':
+                            handleAudio(audio, voiceInfo);
+                            break;
+                        case 'generation-start':
+                            updateStatus('Generating audio...', 'info');
+                            break;
+                        case 'error':
+                            updateStatus(`Error: ${error}`, 'error');
+                            log(`Error: ${error}`);
+                            break;
+                    }
+                };
+                
+                worker.onerror = function(error) {
+                    updateStatus(`Worker error: ${error.message}`, 'error');
+                    log(`Worker error: ${error.message}`);
+                };
+                
+                updateStatus('Worker initialized', 'info');
+                
+            } catch (error) {
+                updateStatus(`Failed to initialize worker: ${error.message}`, 'error');
+                log(`Failed to initialize worker: ${error.message}`);
+            }
+        }
+        
+        // Handle voices list
+        function handleVoices(voicesList) {
+            voices = voicesList;
+            log(`Received ${voices.length} voices`);
+            
+            // Select a default English voice
+            const enVoices = voices.filter(v => v.Locale.startsWith('en-US') && v.Gender === 'Female');
+            if (enVoices.length > 0) {
+                selectedVoice = enVoices[0];
+                voiceInfoEl.textContent = JSON.stringify(selectedVoice, null, 2);
+                generateAudioBtn.disabled = false;
+                updateStatus(`Selected voice: ${selectedVoice.ShortName}`, 'success');
+            } else {
+                updateStatus('No English voices found', 'error');
+            }
+        }
+        
+        // Handle generated audio
+        function handleAudio(audioBuffer, voiceInfo) {
+            log(`Received audio: ${audioBuffer.byteLength} bytes`);
+            
+            // Create blob from array buffer
+            const audioBlob = new Blob([audioBuffer], { type: 'audio/mp3' });
+            
+            // Revoke previous URL if exists
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+            }
+            
+            // Create object URL for the audio blob
+            audioUrl = URL.createObjectURL(audioBlob);
+            
+            // Update audio player
+            audioPlayer.src = audioUrl;
+            audioPlayer.classList.remove('hidden');
+            
+            // Enable play button
+            playAudioBtn.disabled = false;
+            
+            updateStatus('Audio generated successfully', 'success');
+        }
+        
+        // Fetch voices
+        function fetchVoices() {
+            updateStatus('Fetching voices...', 'info');
+            worker.postMessage({ type: 'fetch-voices' });
+        }
+        
+        // Generate audio
+        function generateAudio() {
+            if (!selectedVoice) {
+                updateStatus('No voice selected', 'error');
+                return;
+            }
+            
+            const text = textInput.value.trim();
+            if (!text) {
+                updateStatus('Please enter text', 'error');
+                return;
+            }
+            
+            // Prepare SSML
+            const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${selectedVoice.Locale}">
+                <voice name="${selectedVoice.ShortName}">
+                    ${escapeXml(text)}
+                </voice>
+            </speak>`;
+            
+            log(`Generating audio with SSML: ${ssml}`);
+            
+            // Send to worker
+            worker.postMessage({
+                type: 'generate-audio',
+                data: {
+                    ssml: ssml,
+                    voice: selectedVoice
+                }
+            });
+            
+            // Disable buttons
+            generateAudioBtn.disabled = true;
+            playAudioBtn.disabled = true;
+        }
+        
+        // Play audio
+        function playAudio() {
+            audioPlayer.play();
+        }
+        
+        // Escape XML
+        function escapeXml(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+        
+        // Update status
+        function updateStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+        }
+        
+        // Log message
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            logOutput.textContent = `[${timestamp}] ${message}\n${logOutput.textContent}`;
+        }
+        
+        // Event listeners
+        fetchVoicesBtn.addEventListener('click', fetchVoices);
+        generateAudioBtn.addEventListener('click', generateAudio);
+        playAudioBtn.addEventListener('click', playAudio);
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', initWorker);
+    </script>
+</body>
+</html> 

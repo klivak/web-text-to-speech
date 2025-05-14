@@ -7,7 +7,7 @@
 // Constants
 const AVG_CHARS_PER_SECOND = 15; // Average characters per second for TTS estimation
 const EDGE_TTS_API_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4'; // Direct API endpoint
-const EDGE_TTS_SYNTHESIS_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud'; // Direct API endpoint
+const EDGE_TTS_SYNTHESIS_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1'; // Direct API endpoint
 
 // Create Web Worker for API requests (to bypass CORS)
 let ttsWorker = null;
