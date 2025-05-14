@@ -790,6 +790,45 @@ function handleAudioGenerated(audioBuffer, voiceInfo) {
         // Show success message
         updateStatus(`Аудіо згенеровано (${generationTime} сек). Натисніть "Відтворити" для прослуховування.`, 'success', true);
         
+        // Автоматично завантажуємо нове аудіо в плеєр (але не запускаємо відтворення)
+        if (audioPlayer) {
+            audioPlayer.pause();
+            audioPlayer.src = audioUrl;
+            audioPlayer.load();
+        } else {
+            // Якщо плеєр ще не створений, створюємо його
+            audioPlayer = new Audio(audioUrl);
+            
+            // Налаштування event listeners
+            audioPlayer.addEventListener('loadedmetadata', () => {
+                elements.duration.textContent = formatTime(audioPlayer.duration);
+                elements.audioSeek.max = audioPlayer.duration;
+                elements.audioSeek.value = 0;
+            });
+            
+            audioPlayer.addEventListener('timeupdate', () => {
+                elements.currentTime.textContent = formatTime(audioPlayer.currentTime);
+                const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                elements.audioProgress.style.width = `${progress}%`;
+                
+                if (!elements.audioSeek.dragging) {
+                    elements.audioSeek.value = audioPlayer.currentTime;
+                }
+            });
+            
+            audioPlayer.addEventListener('ended', () => {
+                elements.playBtn.innerHTML = '<i class="bi bi-play-fill"></i> Відтворити';
+                elements.playBtn.disabled = false;
+                elements.stopBtn.disabled = true;
+                updateStatus('Відтворення завершено');
+            });
+            
+            audioPlayer.addEventListener('error', (e) => {
+                console.error('Audio playback error:', e);
+                updateStatus('Помилка відтворення аудіо', 'danger', true);
+            });
+        }
+        
     } catch (error) {
         console.error('Error processing generated audio:', error);
         showGenerationProgress(false);
@@ -952,16 +991,19 @@ function playAudio(url) {
  * Toggle audio playback (play/pause)
  */
 function togglePlayback() {
-    if (!audioPlayer && lastGeneratedAudio) {
-        playAudio(lastGeneratedAudio);
-        return;
-    }
-    
-    if (!audioPlayer) {
+    // Перевіряємо, чи є згенероване аудіо
+    if (!lastGeneratedAudio) {
         updateStatus('Немає аудіо для відтворення', 'warning');
         return;
     }
     
+    // Перевіряємо, чи плеєр існує і містить правильне аудіо
+    if (!audioPlayer || audioPlayer.src !== lastGeneratedAudio) {
+        playAudio(lastGeneratedAudio);
+        return;
+    }
+    
+    // Якщо плеєр існує і має правильне аудіо, просто перемикаємо відтворення
     if (audioPlayer.paused) {
         audioPlayer.play().then(() => {
             elements.playBtn.innerHTML = '<i class="bi bi-pause-fill"></i> Пауза';
