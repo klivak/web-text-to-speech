@@ -19,6 +19,7 @@ let voiceInfo = null;
 let endMessageReceived = false;
 let isDataProcessed = false;
 let isProcessing = false;
+let dataSeparator = new TextEncoder().encode("Path:audio\r\n");
 
 // Слухаємо повідомлення з головного потоку
 self.addEventListener('message', async (event) => {
@@ -138,12 +139,12 @@ async function generateAudio(ssml) {
         webSocket.addEventListener('error', onSocketError);
         webSocket.addEventListener('close', onSocketClose);
         
-        // Встановлюємо таймаут на з'єднання
+        // Встановлюємо таймаут на з'єднання (зменшуємо з 30 до 15 секунд)
         setTimeout(() => {
             if (webSocket && webSocket.readyState === WebSocket.OPEN && !endMessageReceived) {
                 webSocket.close();
             }
-        }, 30000); // 30 секунд часу очікування
+        }, 15000); // 15 секунд часу очікування
     } catch (error) {
         self.postMessage({ type: 'error', error: `Failed to initialize WebSocket: ${error.message}` });
     }
@@ -191,8 +192,14 @@ async function onSocketMessage(event) {
             if (data.includes("Path:turn.end")) {
                 endMessageReceived = true;
                 
-                // НЕ обробляємо дані тут, бо можливо ще прийдуть інші повідомлення
-                // Замість цього обробка виконується під час закриття з'єднання
+                // Обробляємо дані відразу після отримання Path:turn.end
+                // як це робиться в test-example
+                await processAudioChunks();
+                
+                // Закриваємо з'єднання після обробки даних
+                if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+                    webSocket.close();
+                }
             }
         } else if (data instanceof Blob) {
             // Додати бінарні дані до списку чанків
@@ -230,10 +237,9 @@ async function processAudioChunks() {
     
     try {
         isProcessing = true;
-        const dataSeparator = new TextEncoder().encode("Path:audio\r\n");
         let foundValidAudio = false;
         
-        // Обробка всіх блобів
+        // Обробка всіх блобів - оптимізована версія
         for (let i = 0; i < audioChunks.length; i++) {
             const blob = audioChunks[i];
             const arrayBuffer = await blob.arrayBuffer();
@@ -249,29 +255,18 @@ async function processAudioChunks() {
                 if (audioData.length > 0) {
                     foundValidAudio = true;
                     
-                    // Об'єднати з попередніми даними
-                    const newCombined = new Uint8Array(combinedAudioData.length + audioData.length);
-                    newCombined.set(combinedAudioData, 0);
-                    newCombined.set(audioData, combinedAudioData.length);
-                    combinedAudioData = newCombined;
+                    // Об'єднати з попередніми даними більш ефективно
+                    combinedAudioData = concatUint8Arrays(combinedAudioData, audioData);
                 }
-            } else if (chunk.length > 0 && i > 0) {
-                // Якщо немає роздільника, але це не перший чанк, припускаємо що це продовження аудіо
+            } else if (chunk.length > 0 && i > 0 && endMessageReceived) {
+                // Якщо немає роздільника, але є дані і отримали Path:turn.end, це продовження аудіо
                 foundValidAudio = true;
-                const newCombined = new Uint8Array(combinedAudioData.length + chunk.length);
-                newCombined.set(combinedAudioData, 0);
-                newCombined.set(chunk, combinedAudioData.length);
-                combinedAudioData = newCombined;
+                combinedAudioData = concatUint8Arrays(combinedAudioData, chunk);
             }
         }
         
         // Перевірити, чи маємо дані для збереження
         if (combinedAudioData.length > 0 && foundValidAudio) {
-            // Закрити з'єднання, якщо воно ще відкрите
-            if (webSocket && webSocket.readyState === WebSocket.OPEN) {
-                webSocket.close();
-            }
-            
             // Помічаємо що дані були оброблені
             isDataProcessed = true;
             
@@ -294,4 +289,12 @@ async function processAudioChunks() {
     } finally {
         isProcessing = false;
     }
+}
+
+// Більш ефективне об'єднання масивів Uint8Array
+function concatUint8Arrays(a, b) {
+    const result = new Uint8Array(a.length + b.length);
+    result.set(a, 0);
+    result.set(b, a.length);
+    return result;
 } 
