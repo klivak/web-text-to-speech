@@ -9,7 +9,7 @@ try {
 }
 
 // Base API URLs
-const VOICES_API_URL = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4';
+const VOICES_API_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4';
 const SYNTHESIS_API_URL = 'wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1';
 
 // Listen for messages from the main thread
@@ -44,66 +44,23 @@ function generateConnectionId() {
 
 // Get current timestamp in Edge TTS format
 function getTimestamp() {
-    const date = new Date();
-    const options = {
-        weekday: 'short',
-        month: 'short',
-        day: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        timeZoneName: 'short',
-    };
-    const dateString = date.toLocaleString('en-US', options);
-    return dateString.replace(/\u200E/g, '') + ' GMT+0000 (Coordinated Universal Time)';
+    return new Date().toISOString();
 }
 
-// Fetch available voices using WebSocket
+// Fetch available voices using standard fetch
 async function fetchVoices() {
     try {
         self.postMessage({ type: 'info', message: 'Fetching voices...' });
         
-        // Use HTTP XMLHttpRequest for the voices list since WebSocket doesn't work for this endpoint
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/voices/list?trustedclienttoken=6A5AA1D4EAFF4E9FB37E23D68491D6F4', true);
+        // Use standard fetch - we can't set custom headers but don't need them for this endpoint
+        const response = await fetch(VOICES_API_URL);
         
-        // Set headers
-        xhr.setRequestHeader('Accept', 'application/json');
-        xhr.setRequestHeader('Origin', 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold');
-        xhr.setRequestHeader('Referer', 'chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold/reader.html');
-        xhr.setRequestHeader('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36 Edg/114.0.1823.51');
-        xhr.setRequestHeader('Accept-Encoding', 'gzip, deflate, br');
-        xhr.setRequestHeader('Sec-Fetch-Dest', 'empty');
-        xhr.setRequestHeader('Sec-Fetch-Mode', 'cors');
-        xhr.setRequestHeader('Sec-Fetch-Site', 'cross-site');
-        xhr.setRequestHeader('DNT', '1');
+        if (!response.ok) {
+            throw new Error(`Error fetching voices: ${response.status} ${response.statusText}`);
+        }
         
-        // Create a promise to handle the async XHR request
-        const voicesPromise = new Promise((resolve, reject) => {
-            xhr.onload = function() {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try {
-                        const voices = JSON.parse(xhr.responseText);
-                        resolve(voices);
-                    } catch (e) {
-                        reject(new Error('Failed to parse response: ' + e.message));
-                    }
-                } else {
-                    reject(new Error(`Error fetching voices: ${xhr.status} ${xhr.statusText}`));
-                }
-            };
-            
-            xhr.onerror = function() {
-                reject(new Error('Network error while fetching voices'));
-            };
-        });
-        
-        // Send the request
-        xhr.send();
-        
-        // Wait for the promise to resolve
-        const voices = await voicesPromise;
+        // Parse response
+        const voices = await response.json();
         
         // Send the voices list back to the main thread
         self.postMessage({ type: 'voices-list', voices });
@@ -134,59 +91,82 @@ async function generateAudio(data) {
         // Create a promise for the WebSocket operation
         const audioPromise = new Promise((resolve, reject) => {
             let isAudioReceived = false;
+            let connectionTimer = setTimeout(() => {
+                if (!isAudioReceived && socket.readyState === WebSocket.OPEN) {
+                    socket.close();
+                    reject(new Error("Timeout waiting for audio data"));
+                }
+            }, 15000); // 15 second timeout
             
             socket.onopen = function() {
                 // Send speech config
                 const timestamp = getTimestamp();
-                socket.send(
+                const configMessage = 
                     "X-Timestamp:" + timestamp + "\r\n" +
                     "Content-Type:application/json; charset=utf-8\r\n" +
                     "Path:speech.config\r\n\r\n" +
                     '{"context":{"synthesis":{"audio":{"metadataoptions":{' +
                     '"sentenceBoundaryEnabled":false,"wordBoundaryEnabled":true},' +
                     '"outputFormat":"audio-16khz-128kbitrate-mono-mp3"' +
-                    "}}}}\r\n"
-                );
+                    "}}}}\r\n";
+                    
+                socket.send(configMessage);
                 
-                // Send SSML
-                socket.send(
-                    "X-RequestId:" + connectionId + "\r\n" +
-                    "Content-Type:application/ssml+xml\r\n" +
-                    "X-Timestamp:" + timestamp + "Z\r\n" +
-                    "Path:ssml\r\n\r\n" +
-                    ssml
-                );
+                // Send SSML with a small delay to ensure proper sequencing
+                setTimeout(() => {
+                    const ssmlMessage = 
+                        "X-RequestId:" + connectionId + "\r\n" +
+                        "Content-Type:application/ssml+xml\r\n" +
+                        "X-Timestamp:" + timestamp + "\r\n" +
+                        "Path:ssml\r\n\r\n" +
+                        ssml;
+                    
+                    socket.send(ssmlMessage);
+                }, 100);
+                
+                self.postMessage({ type: 'info', message: 'WebSocket opened, sending request...' });
             };
             
             socket.onmessage = async function(event) {
                 const data = event.data;
                 
                 if (typeof data === 'string') {
+                    self.postMessage({ type: 'info', message: `Received message: ${data.substring(0, 50)}...` });
+                    
                     if (data.includes("Path:turn.end")) {
                         // End of audio message received
-                        socket.close();
+                        clearTimeout(connectionTimer);
                         
                         if (audioChunks.length > 0) {
-                            // Combine all audio chunks
-                            processAudioChunks();
+                            // Process collected audio chunks
+                            await processAudioChunks();
                         } else if (!isAudioReceived) {
-                            reject(new Error("No audio data received"));
+                            reject(new Error("No audio data received before turn.end"));
                         }
                     }
                 } else if (data instanceof Blob) {
                     // Binary data - audio chunk
-                    audioChunks.push(data);
                     isAudioReceived = true;
+                    audioChunks.push(data);
+                    self.postMessage({ type: 'info', message: `Received binary chunk: ${data.size} bytes` });
                 }
             };
             
             socket.onerror = function(error) {
+                clearTimeout(connectionTimer);
+                self.postMessage({ type: 'info', message: 'WebSocket error occurred' });
                 reject(new Error(`WebSocket error: ${error.message || 'Unknown error'}`));
             };
             
-            socket.onclose = function() {
+            socket.onclose = function(event) {
+                clearTimeout(connectionTimer);
+                self.postMessage({ type: 'info', message: `WebSocket closed with code: ${event.code}, reason: ${event.reason}` });
+                
                 if (!isAudioReceived) {
                     reject(new Error("Connection closed without receiving audio data"));
+                } else if (audioChunks.length > 0) {
+                    // Process collected audio chunks if not already done
+                    processAudioChunks().catch(reject);
                 }
             };
             
@@ -213,11 +193,18 @@ async function generateAudio(data) {
                             newCombined.set(combinedAudioData, 0);
                             newCombined.set(audioData, combinedAudioData.length);
                             combinedAudioData = newCombined;
+                        } else {
+                            // If no separator found, just append the whole chunk
+                            const newCombined = new Uint8Array(combinedAudioData.length + chunk.length);
+                            newCombined.set(combinedAudioData, 0);
+                            newCombined.set(chunk, combinedAudioData.length);
+                            combinedAudioData = newCombined;
                         }
                     }
                     
                     if (combinedAudioData.length > 0) {
                         // Resolve with the combined audio data
+                        socket.close();
                         resolve(combinedAudioData.buffer);
                     } else {
                         reject(new Error("No valid audio data found in the response"));
