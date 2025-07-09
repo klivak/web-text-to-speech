@@ -128,7 +128,6 @@ const elements = {
     decrementPitch: document.getElementById('decrementPitch'),
     
     // Control buttons
-    applyFiltersBtn: document.getElementById('applyFiltersBtn'),
     resetFiltersBtn: document.getElementById('resetFiltersBtn'),
     resetVoiceParamsBtn: document.getElementById('resetVoiceParamsBtn'),
     generateBtn: document.getElementById('generateBtn'),
@@ -536,18 +535,22 @@ function selectVoice(voice) {
  * Set up all event listeners
  */
 function setupEventListeners() {
-    // Language select
+    // Language select - автоматично фільтрувати при зміні
     elements.languageSelect.addEventListener('change', () => {
         const language = elements.languageSelect.value;
         loadAccents(language);
+        filterVoices(); // Автоматично застосовуємо фільтри
     });
     
-    // Apply filters button
-    elements.applyFiltersBtn.setAttribute('data-bs-toggle', 'tooltip');
-    elements.applyFiltersBtn.setAttribute('data-bs-placement', 'top');
-    elements.applyFiltersBtn.setAttribute('title', 'Застосувати вибрані фільтри');
-    elements.applyFiltersBtn.addEventListener('click', filterVoices);
-    new bootstrap.Tooltip(elements.applyFiltersBtn);
+    // Accent select - автоматично фільтрувати при зміні
+    elements.accentSelect.addEventListener('change', () => {
+        filterVoices(); // Автоматично застосовуємо фільтри
+    });
+    
+    // Gender select - автоматично фільтрувати при зміні
+    elements.genderSelect.addEventListener('change', () => {
+        filterVoices(); // Автоматично застосовуємо фільтри
+    });
     
     // Reset filters button - додаємо тултіп
     elements.resetFiltersBtn.setAttribute('data-bs-toggle', 'tooltip');
