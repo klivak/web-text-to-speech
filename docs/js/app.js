@@ -145,6 +145,296 @@ const LANGUAGE_NAMES = {
     "zu": "зулу"
 };
 
+const LANGUAGE_FLAGS = {
+    "af": "za", // Południна Африка
+    "am": "et", // Ефіопія
+    "ar": "sa", // Саудівська Аравія
+    "as": "in", // Індія
+    "az": "az", // Азербайджан
+    "be": "by", // Білорусь
+    "bg": "bg", // Болгарія
+    "bn": "bd", // Бангладеш
+    "bo": "cn", // Китай (Тибет)
+    "bs": "ba", // Боснія і Герцеговина
+    "ca": "es", // Іспанія (Каталонія)
+    "cs": "cz", // Чехія
+    "cy": "gb-wls", // Уельс
+    "da": "dk", // Данія
+    "de": "de", // Німеччина
+    "dv": "mv", // Мальдіви
+    "el": "gr", // Греція
+    "en": "us", // США
+    "es": "es", // Іспанія
+    "et": "ee", // Естонія
+    "eu": "es", // Іспанія (Країна Басків)
+    "fa": "ir", // Іран
+    "fi": "fi", // Фінляндія
+    "fo": "fo", // Фарерські острови
+    "fr": "fr", // Франція
+    "ga": "ie", // Ірландія
+    "gd": "gb-sct", // Шотландія
+    "gl": "es", // Іспанія (Галісія)
+    "gu": "in", // Індія
+    "ha": "ng", // Нігерія
+    "he": "il", // Ізраїль
+    "hi": "in", // Індія
+    "hr": "hr", // Хорватія
+    "hsb": "de", // Німеччина
+    "hu": "hu", // Угорщина
+    "hy": "am", // Вірменія
+    "id": "id", // Індонезія
+    "ig": "ng", // Нігерія
+    "is": "is", // Ісландія
+    "it": "it", // Італія
+    "ja": "jp", // Японія
+    "jv": "id", // Індонезія
+    "ka": "ge", // Грузія
+    "kk": "kz", // Казахстан
+    "km": "kh", // Камбоджа
+    "kn": "in", // Індія
+    "ko": "kr", // Південна Корея
+    "ku": "tr", // Туреччина
+    "ky": "kg", // Киргизстан
+    "lo": "la", // Лаос
+    "lt": "lt", // Литва
+    "lv": "lv", // Латвія
+    "mg": "mg", // Мадагаскар
+    "mk": "mk", // Північна Македонія
+    "ml": "in", // Індія
+    "mn": "mn", // Монголія
+    "mr": "in", // Індія
+    "ms": "my", // Малайзія
+    "mt": "mt", // Мальта
+    "my": "mm", // М'янма
+    "nb": "no", // Норвегія
+    "ne": "np", // Непал
+    "nl": "nl", // Нідерланди
+    "nn": "no", // Норвегія
+    "no": "no", // Норвегія
+    "or": "in", // Індія
+    "pa": "in", // Індія
+    "pl": "pl", // Польща
+    "ps": "af", // Афганістан
+    "pt": "pt", // Португалія
+    "ro": "ro", // Румунія
+    "ru": "ru", // Росія
+    "rw": "rw", // Руанда
+    "si": "lk", // Шрі-Ланка
+    "sk": "sk", // Словаччина
+    "sl": "si", // Словенія
+    "so": "so", // Сомалі
+    "sq": "al", // Албанія
+    "sr": "rs", // Сербія
+    "su": "id", // Індонезія
+    "sv": "se", // Швеція
+    "sw": "tz", // Танзанія
+    "ta": "in", // Індія
+    "te": "in", // Індія
+    "th": "th", // Таїланд
+    "tk": "tm", // Туркменістан
+    "tl": "ph", // Філіппіни
+    "tr": "tr", // Туреччина
+    "tt": "ru", // Росія (Татарстан)
+    "uk": "ua", // Україна
+    "ur": "pk", // Пакистан
+    "uz": "uz", // Узбекистан
+    "vi": "vn", // В'єтнам
+    "xh": "za", // Південна Африка
+    "yo": "ng", // Нігерія
+    "zh": "cn", // Китай
+    "zu": "za"  // Південна Африка
+};
+
+// Country flags for accents/regions
+const ACCENT_FLAGS = {
+    "US": "us", // United States
+    "GB": "gb", // Great Britain
+    "AU": "au", // Australia
+    "CA": "ca", // Canada
+    "IE": "ie", // Ireland
+    "NZ": "nz", // New Zealand
+    "ZA": "za", // South Africa
+    "IN": "in", // India
+    "SG": "sg", // Singapore
+    "HK": "hk", // Hong Kong
+    "PH": "ph", // Philippines
+    "MY": "my", // Malaysia
+    "NG": "ng", // Nigeria
+    "KE": "ke", // Kenya
+    "GH": "gh", // Ghana
+    "TZ": "tz", // Tanzania
+    "UG": "ug", // Uganda
+    "ZW": "zw", // Zimbabwe
+    "BW": "bw", // Botswana
+    "ZM": "zm", // Zambia
+    "MW": "mw", // Malawi
+    "SZ": "sz", // Swaziland
+    "LS": "ls", // Lesotho
+    "NA": "na", // Namibia
+    "FR": "fr", // France
+    "BE": "be", // Belgium
+    "CH": "ch", // Switzerland
+    "LU": "lu", // Luxembourg
+    "MC": "mc", // Monaco
+    "SN": "sn", // Senegal
+    "CI": "ci", // Ivory Coast
+    "ML": "ml", // Mali
+    "BF": "bf", // Burkina Faso
+    "NE": "ne", // Niger
+    "TD": "td", // Chad
+    "CM": "cm", // Cameroon
+    "CF": "cf", // Central African Republic
+    "GA": "ga", // Gabon
+    "CG": "cg", // Congo
+    "CD": "cd", // Democratic Republic of Congo
+    "MG": "mg", // Madagascar
+    "MU": "mu", // Mauritius
+    "SC": "sc", // Seychelles
+    "KM": "km", // Comoros
+    "DJ": "dj", // Djibouti
+    "DE": "de", // Germany
+    "AT": "at", // Austria
+    "LI": "li", // Liechtenstein
+    "ES": "es", // Spain
+    "MX": "mx", // Mexico
+    "AR": "ar", // Argentina
+    "CO": "co", // Colombia
+    "PE": "pe", // Peru
+    "VE": "ve", // Venezuela
+    "CL": "cl", // Chile
+    "EC": "ec", // Ecuador
+    "BO": "bo", // Bolivia
+    "PY": "py", // Paraguay
+    "UY": "uy", // Uruguay
+    "CR": "cr", // Costa Rica
+    "PA": "pa", // Panama
+    "GT": "gt", // Guatemala
+    "HN": "hn", // Honduras
+    "SV": "sv", // El Salvador
+    "NI": "ni", // Nicaragua
+    "CU": "cu", // Cuba
+    "DO": "do", // Dominican Republic
+    "PR": "pr", // Puerto Rico
+    "GQ": "gq", // Equatorial Guinea
+    "IT": "it", // Italy
+    "SM": "sm", // San Marino
+    "VA": "va", // Vatican
+    "PT": "pt", // Portugal
+    "BR": "br", // Brazil
+    "AO": "ao", // Angola
+    "MZ": "mz", // Mozambique
+    "CV": "cv", // Cape Verde
+    "GW": "gw", // Guinea-Bissau
+    "ST": "st", // São Tomé and Príncipe
+    "TL": "tl", // East Timor
+    "RU": "ru", // Russia
+    "BY": "by", // Belarus
+    "KZ": "kz", // Kazakhstan
+    "KG": "kg", // Kyrgyzstan
+    "TJ": "tj", // Tajikistan
+    "TM": "tm", // Turkmenistan
+    "UZ": "uz", // Uzbekistan
+    "MD": "md", // Moldova
+    "UA": "ua", // Ukraine
+    "CN": "cn", // China
+    "TW": "tw", // Taiwan
+    "MO": "mo", // Macau
+    "JP": "jp", // Japan
+    "KR": "kr", // South Korea
+    "KP": "kp", // North Korea
+    "MN": "mn", // Mongolia
+    "TH": "th", // Thailand
+    "VN": "vn", // Vietnam
+    "LA": "la", // Laos
+    "KH": "kh", // Cambodia
+    "MM": "mm", // Myanmar
+    "ID": "id", // Indonesia
+    "BN": "bn", // Brunei
+    "PK": "pk", // Pakistan
+    "AF": "af", // Afghanistan
+    "IR": "ir", // Iran
+    "IQ": "iq", // Iraq
+    "SY": "sy", // Syria
+    "LB": "lb", // Lebanon
+    "JO": "jo", // Jordan
+    "IL": "il", // Israel
+    "PS": "ps", // Palestine
+    "SA": "sa", // Saudi Arabia
+    "AE": "ae", // UAE
+    "QA": "qa", // Qatar
+    "BH": "bh", // Bahrain
+    "KW": "kw", // Kuwait
+    "OM": "om", // Oman
+    "YE": "ye", // Yemen
+    "TR": "tr", // Turkey
+    "CY": "cy", // Cyprus
+    "GE": "ge", // Georgia
+    "AM": "am", // Armenia
+    "AZ": "az", // Azerbaijan
+    "GR": "gr", // Greece
+    "MK": "mk", // Macedonia
+    "AL": "al", // Albania
+    "ME": "me", // Montenegro
+    "RS": "rs", // Serbia
+    "BA": "ba", // Bosnia and Herzegovina
+    "HR": "hr", // Croatia
+    "SI": "si", // Slovenia
+    "HU": "hu", // Hungary
+    "RO": "ro", // Romania
+    "BG": "bg", // Bulgaria
+    "CZ": "cz", // Czech Republic
+    "SK": "sk", // Slovakia
+    "PL": "pl", // Poland
+    "LT": "lt", // Lithuania
+    "LV": "lv", // Latvia
+    "EE": "ee", // Estonia
+    "FI": "fi", // Finland
+    "SE": "se", // Sweden
+    "NO": "no", // Norway
+    "DK": "dk", // Denmark
+    "IS": "is", // Iceland
+    "FO": "fo", // Faroe Islands
+    "GL": "gl", // Greenland
+    "NL": "nl", // Netherlands
+    "AW": "aw", // Aruba
+    "CW": "cw", // Curaçao
+    "SX": "sx", // Sint Maarten
+    "SR": "sr", // Suriname
+    "ET": "et", // Ethiopia
+    "ER": "er", // Eritrea
+    "SO": "so", // Somalia
+    "DZ": "dz", // Algeria
+    "MA": "ma", // Morocco
+    "TN": "tn", // Tunisia
+    "LY": "ly", // Libya
+    "EG": "eg", // Egypt
+    "SD": "sd", // Sudan
+    "SS": "ss", // South Sudan
+    "LK": "lk", // Sri Lanka
+    "MV": "mv", // Maldives
+    "NP": "np", // Nepal
+    "BT": "bt", // Bhutan
+    "BD": "bd", // Bangladesh
+    "FJ": "fj", // Fiji
+    "PG": "pg", // Papua New Guinea
+    "SB": "sb", // Solomon Islands
+    "VU": "vu", // Vanuatu
+    "NC": "nc", // New Caledonia
+    "PF": "pf", // French Polynesia
+    "WS": "ws", // Samoa
+    "TO": "to", // Tonga
+    "KI": "ki", // Kiribati
+    "TV": "tv", // Tuvalu
+    "NR": "nr", // Nauru
+    "PW": "pw", // Palau
+    "FM": "fm", // Micronesia
+    "MH": "mh", // Marshall Islands
+    "CK": "ck", // Cook Islands
+    "NU": "nu", // Niue
+    "TK": "tk", // Tokelau
+    "WF": "wf", // Wallis and Futuna
+};
+
 const ACCENT_DESCRIPTIONS = {
     "US": "США",
     "GB": "Британія",
@@ -193,9 +483,22 @@ let toastCounter = 0; // Counter for unique toast IDs
 
 // DOM Elements
 const elements = {
-    // Filter selectors
+    // Filter selectors - Custom Language Select
     languageSelect: document.getElementById('languageSelect'),
+    languageSelectTrigger: document.querySelector('#languageSelect .custom-select-trigger'),
+    languageSelectValue: document.querySelector('#languageSelect .custom-select-value'),
+    languageSelectDropdown: document.querySelector('#languageSelect .custom-select-dropdown'),
+    languageOptions: document.getElementById('languageOptions'),
+    languageSearch: document.getElementById('languageSearch'),
+    
+    // Custom Accent Select
     accentSelect: document.getElementById('accentSelect'),
+    accentSelectTrigger: document.querySelector('#accentSelect .custom-select-trigger'),
+    accentSelectValue: document.querySelector('#accentSelect .custom-select-value'),
+    accentSelectDropdown: document.querySelector('#accentSelect .custom-select-dropdown'),
+    accentOptions: document.getElementById('accentOptions'),
+    accentSearch: document.getElementById('accentSearch'),
+    
     genderSelect: document.getElementById('genderSelect'),
     
     // Voice list
@@ -340,8 +643,12 @@ function handleVoicesLoaded(voices) {
     }
 }
 
+// Global variables to store current selections
+let currentLanguage = 'all';
+let currentAccent = 'all';
+
 /**
- * Load languages to the language select dropdown
+ * Load languages to the custom language select dropdown
  */
 function loadLanguages() {
     try {
@@ -351,37 +658,69 @@ function loadLanguages() {
             return locale.split('-')[0];
         }))].filter(lang => lang).sort();
         
-        // Оновлюємо лейбл з кількістю доступних мов
+        // Update label with language count
         const languageLabel = document.querySelector('label[for="languageSelect"]');
         if (languageLabel) {
             languageLabel.textContent = `Мова: (${languages.length})`;
         }
         
-        // Clear the language select
-        elements.languageSelect.innerHTML = '';
+        // Clear the language options
+        elements.languageOptions.innerHTML = '';
         
         // Add "All languages" option
-        const allOption = document.createElement('option');
-        allOption.value = 'all';
-        allOption.textContent = 'Всі мови';
-        elements.languageSelect.appendChild(allOption);
+        const allOption = document.createElement('div');
+        allOption.className = 'custom-select-option';
+        allOption.dataset.value = 'all';
+        allOption.innerHTML = `<span class="fi fi-globe"></span> Всі мови`;
+        elements.languageOptions.appendChild(allOption);
         
-        // Add language options
-        languages.forEach(lang => {
-            const option = document.createElement('option');
-            option.value = lang;
+        // Add English first if it exists
+        if (languages.includes('en')) {
+            const enOption = document.createElement('div');
+            enOption.className = 'custom-select-option';
+            enOption.dataset.value = 'en';
+            
+            const langName = LANGUAGE_NAMES['en'] || 'en';
+            const flagCode = LANGUAGE_FLAGS['en'];
+            
+            if (flagCode) {
+                enOption.innerHTML = `<span class="fi fi-${flagCode}"></span> EN (${langName})`;
+            } else {
+                enOption.innerHTML = `🌐 EN (${langName})`;
+            }
+            
+            elements.languageOptions.appendChild(enOption);
+        }
+        
+        // Add other language options (excluding English since it's already added)
+        languages.filter(lang => lang !== 'en').forEach(lang => {
+            const option = document.createElement('div');
+            option.className = 'custom-select-option';
+            option.dataset.value = lang;
+            
             const langName = LANGUAGE_NAMES[lang] || lang;
-            option.textContent = `${lang.toUpperCase()} (${langName})`;
-            elements.languageSelect.appendChild(option);
+            const flagCode = LANGUAGE_FLAGS[lang];
+            
+            if (flagCode) {
+                option.innerHTML = `<span class="fi fi-${flagCode}"></span> ${lang.toUpperCase()} (${langName})`;
+            } else {
+                option.innerHTML = `🌐 ${lang.toUpperCase()} (${langName})`;
+            }
+            
+            elements.languageOptions.appendChild(option);
         });
         
-        // Default to English if available
-        const englishOption = Array.from(elements.languageSelect.options)
-            .find(opt => opt.value === 'en');
-        if (englishOption) {
-            elements.languageSelect.value = 'en';
-            loadAccents('en');
+        // Set default to English if available
+        const englishExists = languages.includes('en');
+        if (englishExists) {
+            selectLanguage('en');
+        } else {
+            selectLanguage('all');
         }
+        
+        // Setup custom select functionality
+        setupCustomLanguageSelect();
+        
     } catch (error) {
         console.error('Error loading languages:', error);
         updateStatus('Помилка завантаження мов', 'danger');
@@ -389,21 +728,244 @@ function loadLanguages() {
 }
 
 /**
+ * Setup custom language select functionality
+ */
+function setupCustomLanguageSelect() {
+    // Toggle dropdown
+    elements.languageSelectTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleLanguageDropdown();
+    });
+    
+    // Handle option selection
+    elements.languageOptions.addEventListener('click', (e) => {
+        const option = e.target.closest('.custom-select-option');
+        if (option) {
+            const value = option.dataset.value;
+            selectLanguage(value);
+            closeLanguageDropdown();
+        }
+    });
+    
+    // Search functionality
+    elements.languageSearch.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        filterLanguageOptions(searchTerm);
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!elements.languageSelect.contains(e.target)) {
+            closeLanguageDropdown();
+        }
+    });
+    
+    // Handle keyboard navigation
+    elements.languageSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeLanguageDropdown();
+        }
+    });
+}
+
+/**
+ * Toggle language dropdown visibility
+ */
+function toggleLanguageDropdown() {
+    const isOpen = elements.languageSelectDropdown.classList.contains('show');
+    if (isOpen) {
+        closeLanguageDropdown();
+    } else {
+        openLanguageDropdown();
+    }
+}
+
+/**
+ * Open language dropdown
+ */
+function openLanguageDropdown() {
+    elements.languageSelectDropdown.classList.add('show');
+    elements.languageSelectTrigger.classList.add('active');
+    elements.languageSearch.focus();
+    elements.languageSearch.value = '';
+    filterLanguageOptions('');
+}
+
+/**
+ * Close language dropdown
+ */
+function closeLanguageDropdown() {
+    elements.languageSelectDropdown.classList.remove('show');
+    elements.languageSelectTrigger.classList.remove('active');
+}
+
+/**
+ * Filter language options based on search term
+ */
+function filterLanguageOptions(searchTerm) {
+    const options = elements.languageOptions.querySelectorAll('.custom-select-option');
+    options.forEach(option => {
+        const text = option.textContent.toLowerCase();
+        const value = option.dataset.value.toLowerCase();
+        const matches = text.includes(searchTerm) || value.includes(searchTerm);
+        option.classList.toggle('hidden', !matches);
+    });
+}
+
+/**
+ * Select a language option
+ */
+function selectLanguage(value) {
+    currentLanguage = value;
+    
+    // Update UI
+    const selectedOption = elements.languageOptions.querySelector(`[data-value="${value}"]`);
+    if (selectedOption) {
+        // Remove previous selection
+        elements.languageOptions.querySelectorAll('.custom-select-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        
+        // Add selection to current option
+        selectedOption.classList.add('selected');
+        
+        // Update trigger display
+        elements.languageSelectValue.innerHTML = selectedOption.innerHTML;
+    }
+    
+    // Load accents and filter voices
+    loadAccents(value);
+}
+
+/**
+ * Setup custom accent select functionality
+ */
+function setupCustomAccentSelect() {
+    // Toggle dropdown
+    elements.accentSelectTrigger.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleAccentDropdown();
+    });
+    
+    // Handle option selection
+    elements.accentOptions.addEventListener('click', (e) => {
+        const option = e.target.closest('.custom-select-option');
+        if (option) {
+            const value = option.dataset.value;
+            selectAccent(value);
+            closeAccentDropdown();
+        }
+    });
+    
+    // Search functionality
+    elements.accentSearch.addEventListener('input', (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        filterAccentOptions(searchTerm);
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!elements.accentSelect.contains(e.target)) {
+            closeAccentDropdown();
+        }
+    });
+    
+    // Handle keyboard navigation
+    elements.accentSearch.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeAccentDropdown();
+        }
+    });
+}
+
+/**
+ * Toggle accent dropdown visibility
+ */
+function toggleAccentDropdown() {
+    const isOpen = elements.accentSelectDropdown.classList.contains('show');
+    if (isOpen) {
+        closeAccentDropdown();
+    } else {
+        openAccentDropdown();
+    }
+}
+
+/**
+ * Open accent dropdown
+ */
+function openAccentDropdown() {
+    elements.accentSelectDropdown.classList.add('show');
+    elements.accentSelectTrigger.classList.add('active');
+    elements.accentSearch.focus();
+    elements.accentSearch.value = '';
+    filterAccentOptions('');
+}
+
+/**
+ * Close accent dropdown
+ */
+function closeAccentDropdown() {
+    elements.accentSelectDropdown.classList.remove('show');
+    elements.accentSelectTrigger.classList.remove('active');
+}
+
+/**
+ * Filter accent options based on search term
+ */
+function filterAccentOptions(searchTerm) {
+    const options = elements.accentOptions.querySelectorAll('.custom-select-option');
+    options.forEach(option => {
+        const text = option.textContent.toLowerCase();
+        const value = option.dataset.value.toLowerCase();
+        const matches = text.includes(searchTerm) || value.includes(searchTerm);
+        option.classList.toggle('hidden', !matches);
+    });
+}
+
+/**
+ * Select an accent option
+ */
+function selectAccent(value) {
+    currentAccent = value;
+    
+    // Update UI
+    const selectedOption = elements.accentOptions.querySelector(`[data-value="${value}"]`);
+    if (selectedOption) {
+        // Remove previous selection
+        elements.accentOptions.querySelectorAll('.custom-select-option').forEach(opt => {
+            opt.classList.remove('selected');
+        });
+        
+        // Add selection to current option
+        selectedOption.classList.add('selected');
+        
+        // Update trigger display
+        elements.accentSelectValue.innerHTML = selectedOption.innerHTML;
+    }
+    
+    // Filter voices
+    filterVoices();
+}
+
+
+
+/**
  * Load accents for the selected language
  * @param {string} language - Selected language code
  */
 function loadAccents(language) {
     try {
-        // Clear the accent select
-        elements.accentSelect.innerHTML = '';
+        // Clear accent options
+        elements.accentOptions.innerHTML = '';
         
         // Add "All accents" option
-        const allOption = document.createElement('option');
-        allOption.value = 'all';
-        allOption.textContent = 'Всі акценти';
-        elements.accentSelect.appendChild(allOption);
+        const allOption = document.createElement('div');
+        allOption.className = 'custom-select-option';
+        allOption.dataset.value = 'all';
+        allOption.innerHTML = `<span class="fi fi-globe"></span> Всі акценти`;
+        elements.accentOptions.appendChild(allOption);
         
-        // Оновлюємо лейбл акцентів
+        // Update accent label
         const accentLabel = document.querySelector('label[for="accentSelect"]');
         
         if (language !== 'all') {
@@ -416,34 +978,39 @@ function loadAccents(language) {
                 })
             )].filter(accent => accent).sort();
             
-            // Оновлюємо лейбл з кількістю доступних акцентів
+            // Update label with accent count
             if (accentLabel) {
                 accentLabel.textContent = `Акцент: (${accents.length})`;
             }
             
             // Add accent options
             accents.forEach(accent => {
-                const option = document.createElement('option');
-                option.value = accent;
+                const option = document.createElement('div');
+                option.className = 'custom-select-option';
+                option.dataset.value = accent;
+                
                 const accentDesc = ACCENT_DESCRIPTIONS[accent] || accent;
-                option.textContent = `${accent} (${accentDesc})`;
-                elements.accentSelect.appendChild(option);
+                const flagCode = ACCENT_FLAGS[accent.toUpperCase()];
+                
+                if (flagCode) {
+                    option.innerHTML = `<span class="fi fi-${flagCode}"></span> ${accent} (${accentDesc})`;
+                } else {
+                    option.innerHTML = `🌐 ${accent} (${accentDesc})`;
+                }
+                
+                elements.accentOptions.appendChild(option);
             });
             
-            // Якщо доступний лише один акцент, автоматично вибираємо його
+            // Auto-select for single accent or default US for English
             if (accents.length === 1) {
-                elements.accentSelect.value = accents[0];
-            } 
-            // Інакше, для англійської, вибираємо US як стандартний акцент
-            else if (language === 'en') {
-                const usOption = Array.from(elements.accentSelect.options)
-                    .find(opt => opt.value === 'US');
-                if (usOption) {
-                    elements.accentSelect.value = 'US';
-                }
+                selectAccent(accents[0]);
+            } else if (language === 'en' && accents.includes('US')) {
+                selectAccent('US');
+            } else {
+                selectAccent('all');
             }
         } else {
-            // Коли вибрані всі мови, показуємо загальну кількість акцентів
+            // When all languages selected, show total accent count
             const allAccents = [...new Set(allVoices
                 .map(voice => {
                     const locale = voice.Locale || '';
@@ -455,10 +1022,16 @@ function loadAccents(language) {
             if (accentLabel) {
                 accentLabel.textContent = `Акцент: (${allAccents})`;
             }
+            
+            selectAccent('all');
         }
         
-        // Update voices list with new filters
-        filterVoices();
+        // Setup custom select functionality if not already done
+        if (!elements.accentSelectTrigger.hasAttribute('data-setup')) {
+            setupCustomAccentSelect();
+            elements.accentSelectTrigger.setAttribute('data-setup', 'true');
+        }
+        
     } catch (error) {
         console.error('Error loading accents:', error);
         updateStatus('Помилка завантаження акцентів', 'danger');
@@ -470,8 +1043,8 @@ function loadAccents(language) {
  */
 function filterVoices() {
     try {
-        const language = elements.languageSelect.value;
-        const accent = elements.accentSelect.value;
+        const language = currentLanguage;
+        const accent = currentAccent;
         const gender = elements.genderSelect.value;
         
         // Filter voices
@@ -649,17 +1222,9 @@ function selectVoice(voice) {
  * Set up all event listeners
  */
 function setupEventListeners() {
-    // Language select - автоматично фільтрувати при зміні
-    elements.languageSelect.addEventListener('change', () => {
-        const language = elements.languageSelect.value;
-        loadAccents(language);
-        filterVoices(); // Автоматично застосовуємо фільтри
-    });
+    // Language select is now handled by setupCustomLanguageSelect()
     
-    // Accent select - автоматично фільтрувати при зміні
-    elements.accentSelect.addEventListener('change', () => {
-        filterVoices(); // Автоматично застосовуємо фільтри
-    });
+    // Accent select is now handled by setupCustomAccentSelect()
     
     // Gender select - автоматично фільтрувати при зміні
     elements.genderSelect.addEventListener('change', () => {
@@ -1287,10 +1852,9 @@ function resetVoiceParams() {
  * Reset all filters
  */
 function resetFilters() {
-    elements.languageSelect.value = 'all';
-    loadAccents('all');
+    selectLanguage('all');
+    selectAccent('all');
     elements.genderSelect.value = 'all';
-    filterVoices();
     updateStatus('Фільтри скинуто', 'info');
 }
 
